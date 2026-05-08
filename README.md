@@ -48,15 +48,7 @@ Strong enrichment of MAPK and EGFR-related pathways
 Consistent results between edgeR and limma pipelines
 Clear separation between experimental groups in PCA
 
-📂 Repository Structure
-rna-seq-map3k1/
-├── data/              # metadata and processed data (no raw FASTQ)
-├── metadata/          # sample annotations
-├── scripts/           # analysis scripts (step-by-step)
-├── results/           # outputs (DE tables, plots)
-├── notebooks/         # exploratory analysis (RMarkdown)
-├── README.md
-└── environment.yml / renv.lock
+
 
 # 🚀 How to Run
 1. Clone repository
