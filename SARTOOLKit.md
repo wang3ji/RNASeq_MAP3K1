@@ -54,5 +54,40 @@ After installation, verify:
 
 ```bash
 fasterq-dump --version
+```
+### Download SRA data
+```bashh
+prefetch SRR25245096
+```
+### Convert SRA to FASTQ
+```bash
+fasterq-dump SRR25245096
+```
+**This generates: SRR25245096.fastq**
+
+## create a shell script
+```bash
+nano download_sra.sh
+```
+### Make it executable
+``` bash
+chmod +x download_sra.sh
+# Run it
+./download_sra.sh
+```
+## Even cleaner: use a text file
+```bash
+nano srr_ids.txt
+```
+srr_ids.txt:
 
 
+Then script:
+```bash
+while read SRR
+do
+    prefetch $SRR
+    fasterq-dump $SRR --split-files -e 8
+done < srr_ids.txt
+```
+## 
