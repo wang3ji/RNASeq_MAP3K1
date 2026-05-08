@@ -12,7 +12,7 @@ This project aims to:
 **Source:** GEO (GSE237130)
 
 **Samples:** 6 total
-3 × over-expressed (SAM01–03)
+3 × overexpressed (SAM01–03)
 3 × knockdown (shRNA04–06)
 
 **Sequencing:** Single-end RNA-seq
