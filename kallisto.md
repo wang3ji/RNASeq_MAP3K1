@@ -291,7 +291,7 @@ kallisto quant \
 
 # 🔁 Batch Quantification
 
-For multiple samples, create a shell script and execute it in the terminal.
+For multiple samples, create a shell script (readMapping.sh) and execute it in the terminal.
 
 Example workflow:
 
