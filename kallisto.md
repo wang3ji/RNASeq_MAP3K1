@@ -1,54 +1,342 @@
-# Kallisto workflow
-## workflow
-Check the quality of the fastq files -> build an index from the reference fasta file -> map the reads to the indexed reference host transcriptome
+# 🧬 kallisto RNA-seq Workflow
 
-## use fastqc to check the quality of fastq files
-**fastqc is a command-line tool**
+## Workflow Overview
 
-**Basic Syntax:** fastqc [options] seqfiles seqfile2 ...
+RNA-seq quantification workflow:
 
-**Key Arguments:**
+```text
+FASTQ quality control
+→ trimming / filtering
+→ build transcriptome index
+→ pseudoalignment and quantification with kallisto
+→ gene-level summarization with tximport
+→ differential expression analysis
+```
 
--o / --outdir: Specifies the directory for output files.
+This project uses kallisto for transcript-level abundance estimation.
 
--t / --threads: Enables multi-threading to speed up processing for multiple files.
+Advantages of kallisto:
 
--f: Forces a specific file format(e.g., fastq, bam,sam)
+* fast pseudoalignment
+* low computational requirements
+* accurate transcript quantification
+* suitable for large-scale RNA-seq workflows
 
-``` bash
+Reference:
+https://pachterlab.github.io/kallisto/
+
+---
+
+# 🔬 Quality Control with FastQC
+
+FastQC is a command-line tool used to assess sequencing quality before downstream analysis.
+
+## Basic Syntax
+
+```bash
+fastqc [options] seqfile1 seqfile2 ...
+```
+
+## Common Arguments
+
+| Argument           | Description         |
+| ------------------ | ------------------- |
+| `-o` / `--outdir`  | Output directory    |
+| `-t` / `--threads` | Number of threads   |
+| `-f`               | Specify file format |
+
+## Example Command
+
+```bash
 fastqc *.fastq -t 8
 ```
-**fastqc results**
 
-For my data, there are two fails in Per base sequence content and Sequence Duplication Levels.
+---
 
-**Per base sequence content** 
+# 📊 FastQC Results
 
-It is the "False Alarm" when doing **RNA-Seq**. RNA-seq libraries often use "random hexamer" priming. In reality, these primers are not perfectly random; they have a slight preference for certain sequences. You will see jagged, non-parallel lines in the first 10–15 bases of the read.  This is a known technical artifact that does not usually affect alignment or gene expression quantification. 
+For this dataset, FastQC reported two warning/fail categories:
 
-**Sequence Duplication Levels**
+* Per base sequence content
+* Sequence duplication levels
 
-Only about 30% of my reads are unique (appearing only once), which is why FastQC is flagging this as a FAIL. This profile is actually quite common for high-depth RNA-Seq. The sequences appearing >1k times are likely highly abundant housekeeping genes (like Actin or GAPDH) or ribosomal RNA (rRNA) if the depletion step wasn't perfect. If this is WGS (Whole Genome Sequencing): This is a major red flag.
+---
 
-**Overall, all the data I downloaded here pass the quality control** 
+## Per Base Sequence Content
 
-### fastp to trim the data
+This is a common and expected artifact in RNA-seq datasets.
 
-Trimming can be helpful, but only for certain types of "fails." It is excellent for fixing adapter contamination and low-quality ends.
+RNA-seq libraries often use random hexamer priming during cDNA synthesis. In practice, these primers are not perfectly random and can introduce sequence bias in the first 10–15 bases of reads.
 
-To remove adapter contamination, we can use specialized command-line tools, like fastp, Trimmomatic, or Cutadapt. Modern pipelines often prefer fastp because it is 2–5 times faster and automatically detects common Illumina adapter sequences.
+This produces:
 
-**Command**
+* jagged sequence-content curves
+* non-parallel nucleotide composition lines
+
+This technical artifact generally does not affect:
+
+* read alignment
+* transcript quantification
+* downstream differential expression analysis
+
+Therefore, this warning is typically considered acceptable for RNA-seq data.
+
+---
+
+## Sequence Duplication Levels
+
+FastQC indicated elevated duplication levels, with approximately 30% unique reads.
+
+This pattern is common in high-depth RNA-seq datasets because highly expressed transcripts can appear many times.
+
+Examples include:
+
+* housekeeping genes
+* ribosomal RNA contamination
+* highly abundant transcripts
+
+For RNA-seq, moderate-to-high duplication levels are often biologically expected.
+
+In contrast:
+
+* high duplication would be a major concern in whole-genome sequencing (WGS)
+
+---
+
+# ✅ QC Summary
+
+Overall, the sequencing data passed quality control and were suitable for downstream transcript quantification.
+
+Observed warnings were consistent with expected RNA-seq library characteristics.
+
+---
+
+# ✂️ Read Trimming with fastp
+
+Adapter contamination and low-quality bases can negatively affect pseudoalignment and quantification accuracy.
+
+This project uses fastp for trimming because it:
+
+* automatically detects adapters
+* performs quality filtering
+* generates QC reports
+* is computationally efficient
+
+Alternative tools include:
+
+* Trimmomatic
+* Cutadapt
+
+Reference:
+https://github.com/OpenGene/fastp
+
+---
+
+# ▶️ fastp Example Command
+
+## Paired-end example
+
 ```bash
-fastp -i SRR25245096_1.fastq.gz -I SRR25245096_2.fastq.gz \  # -i Input read 1 (forward reads) -I Input read 2 (reverse reads)
-      -o trimmed_1.fastq.gz -O trimmed_2.fastq.gz \ # -o Output trimmed read 1, -O Output trimmed read 2
-      --detect_adapter_for_pe \ # Auto-detect adapters for paired-end data
-      --html report.html \  # Generate an HTML QC report
-      --json report.json \
-      --thread 4 \
-      --qualified_quality_phred 20 \   # Stricter quality threshold
-      --length_required 36 \           # Drop reads shorter than 36bp
-      --correction \                   # PE overlap error correction
-      --overrepresentation_analysis    # Detect overrepresented sequences
+fastp \
+    -i SRR25245096_1.fastq.gz \
+    -I SRR25245096_2.fastq.gz \
+    -o trimmed_1.fastq.gz \
+    -O trimmed_2.fastq.gz \
+    --detect_adapter_for_pe \
+    --html report.html \
+    --json report.json \
+    --thread 8 \
+    --qualified_quality_phred 20 \
+    --length_required 36 \
+    --correction \
+    --overrepresentation_analysis
 ```
+
+## Key Parameters
+
+| Parameter                      | Description                     |
+| ------------------------------ | ------------------------------- |
+| `--detect_adapter_for_pe`      | Auto-detect paired-end adapters |
+| `--qualified_quality_phred 20` | Quality threshold               |
+| `--length_required 36`         | Minimum read length             |
+| `--correction`                 | Overlap-based error correction  |
+| `--html`                       | Generate HTML report            |
+| `--json`                       | Generate JSON report            |
+
+---
+
+# 📋 MultiQC
+
+MultiQC aggregates outputs from multiple bioinformatics tools into a single interactive report.
+
+Supported tools include:
+
+* FastQC
+* fastp
+* STAR
+* Salmon
+* featureCounts
+* Cutadapt
+
+Reference:
+https://multiqc.info/
+
+## Run MultiQC
+
+```bash
+multiqc .
+```
+
+This command scans subdirectories for recognized logs and generates:
+
+```text
+multiqc_report.html
+```
+
+---
+
+# 🧬 kallisto Quantification
+
+## 1. Build Transcriptome Index
+
+Build the kallisto index once per reference transcriptome.
+
+## Example
+
+```bash
+kallisto index \
+    -i transcripts.idx \
+    transcripts.fa
+```
+
+---
+
+## Reference Transcriptome
+
+This project uses the Ensembl human transcriptome:
+
+```text
+Homo_sapiens.GRCh38.cdna.all.fa.gz
+```
+
+Download from Ensembl:
+
+https://useast.ensembl.org/info/data/ftp/index.html
+
+---
+
+## Build Index
+
+```bash
+kallisto index \
+    -i Homo_sapiens.GRCh38.cdna.all.index \
+    Homo_sapiens.GRCh38.cdna.all.fa.gz
+```
+
+---
+
+# ▶️ Quantify Samples
+
+## Paired-end RNA-seq
+
+```bash
+kallisto quant \
+    -i transcripts.idx \
+    -o sample_kallisto \
+    -b 100 \
+    sample1_R1.fastq.gz \
+    sample1_R2.fastq.gz
+```
+
+---
+
+## Single-end RNA-seq
+
+```bash
+kallisto quant \
+    -i transcripts.idx \
+    -o sample_kallisto \
+    --single \
+    -l 200 \
+    -s 20 \
+    sample1.fastq.gz
+```
+
+---
+
+# 🧪 Quantification Command Used in This Project
+
+```bash
+kallisto quant \
+    -i Homo_sapiens.GRCh38.cdna.all.index \
+    -o SAM01 \
+    -t 8  \
+    --single \
+    -l 200 \
+    -s 20 \
+    SRR25245096.fastq \
+    &> SAM01.log
+```
+
+## Parameters
+
+| Parameter  | Description                        |
+| ---------- | ---------------------------------- |
+| `-t 8`     | Number of threads                  |
+| `--single` | Single-end sequencing              |
+| `-l 200`   | Estimated fragment length          |
+| `-s 20`    | Fragment length standard deviation |
+
+---
+
+# 🔁 Batch Quantification
+
+For multiple samples, create a shell script and execute it in the terminal.
+
+Example workflow:
+
+```bash
+for file in *.fastq
+do
+    sample=$(basename $file .fastq)
+
+    kallisto quant \
+        -i Homo_sapiens.GRCh38.cdna.all.index \
+        -o ${sample} \
+        -t 8 \
+        --single \
+        -l 200 \
+        -s 20 \
+        ${file}
+
+done
+```
+
+---
+
+# 📂 kallisto Output
+
+Each sample directory contains:
+
+```text
+SAM01/
+├── abundance.tsv
+├── abundance.h5
+└── run_info.json
+```
+
+---
+
+# 🔗 Next Step
+
+After transcript quantification:
+
+1. import transcript abundances with tximport
+2. summarize transcript counts to gene level
+3. perform differential expression analysis using edgeR and limma-voom
+
+
+
+
+
 
