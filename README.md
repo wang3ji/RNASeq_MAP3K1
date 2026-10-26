@@ -1,78 +1,72 @@
-# RNASeq_MAP3K1
-This project presents a fully reproducible RNA-seq analysis pipeline to identify genes and pathways regulated by MAP3K1 perturbation in human keratinocytes. Using dataset GSE237130, the workflow spans from raw sequencing reads to differential expression and pathway enrichment analysis.
-# Biological Background
-MAP3K1 is a key regulator of MAPK signaling and plays an important role in epithelial biology and developmental processes. Dysregulation of MAP3K1 has been linked to defects in tissue closure and altered EGFR signaling.
-This project aims to:
+# RNA-seq analysis of MAP3K1 overexpression vs. knockdown in human keratinocytes
 
-1. Identify differentially expressed genes upon MAP3K1 perturbation
-2. Characterize affected biological pathways
-3. Reproduce and extend findings from the original study
+A bulk RNA-seq workflow from raw reads to differentially expressed genes. It compares MAP3K1-overexpressing and MAP3K1-knockdown HaCaT keratinocytes, using public data from GEO [GSE237130](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE237130).
 
-# Dataset
-**Source:** GEO (GSE237130)
+**Tools:** SRA Toolkit · FastQC · MultiQC · kallisto · tximport · edgeR (TMM normalization) · limma-voom
 
-**Samples:** 6 total
-3 × overexpressed (SAM01–03)
-3 × knockdown (shRNA04–06)
+## Biological question
 
-**Sequencing:** Single-end RNA-seq
+MAP3K1 is a MAPK kinase kinase that controls epithelial migration and tissue closure during development. This analysis asks which genes and pathways change in keratinocytes when MAP3K1 is turned up or turned down.
 
-# Workflow
-1. Quality Control
-FastQC for raw read quality assessment
-Adapter/content issues identified and addressed
-2. Preprocessing
-Read trimming (if applicable)
-3. Quantification
-Pseudoalignment using kallisto
-Transcript-level quantification
-4. Gene-Level Summarization
-Import using tximport
-Mapping transcripts to genes
-5. Differential Expression Analysis
-edgeR (negative binomial model)
-limma-voom (linear modeling with precision weights)
-6. Filtering & Normalization
-Low-expression filtering (CPM-based)
-TMM normalization
-7. Exploratory Data Analysis
-PCA / MDS plots
-Sample clustering
-8. Functional Enrichment
-Gene Set Enrichment Analysis (GSEA)
-Hallmark and curated pathways
+## Data
 
-# Key Results
-Identification of differentially expressed genes (FDR < 0.05)
-Strong enrichment of MAPK and EGFR-related pathways
-Consistent results between edgeR and limma pipelines
-Clear separation between experimental groups in PCA
+| Sample | SRA run | Group | Perturbation |
+|---|---|---|---|
+| SAM01 | SRR25245096 | over_expressed | CRISPR activation (dCas9-SAM) of MAP3K1 |
+| SAM02 | SRR25245097 | over_expressed | CRISPR activation (dCas9-SAM) of MAP3K1 |
+| SAM03 | SRR25245098 | over_expressed | CRISPR activation (dCas9-SAM) of MAP3K1 |
+| shRNA04 | SRR25245099 | down_expressed | shRNA knockdown of MAP3K1 |
+| shRNA05 | SRR25245100 | down_expressed | shRNA knockdown of MAP3K1 |
+| shRNA06 | SRR25245101 | down_expressed | shRNA knockdown of MAP3K1 |
 
+The reads are single-end, about 84 bp, from an Illumina NextSeq 550, with about 20–23 million reads per sample. The full metadata is in `SraRunTable.csv`, and the sample-to-group table the R scripts read is `studydesign.txt`.
 
+Source publication: *MAP3K1 regulates female reproductive tract development*, Disease Models & Mechanisms (2024) 17(3): dmm050669, [doi:10.1242/dmm.050669](https://doi.org/10.1242/dmm.050669).
 
-# 🚀 How to Run
-1. Clone repository
-git clone https://github.com/your-username/rna-seq-map3k1.git
-cd rna-seq-map3k1
-2. Set up environment
+## Workflow
 
-Using R:
+```text
+download_sra.sh            SRA → FASTQ (prefetch, fasterq-dump)
+readMapping.sh             FastQC → kallisto index + quant (single-end, -l 200 -s 20) → MultiQC
+ReadKallistoCounts1.R      tximport: transcript abundances → gene-level counts (EnsDb.Hsapiens.v86)
+FilterAndNormalization2.R  edgeR: filterByExpr, TMM normalization, log2 CPM violin plots
+DE-limma-voom3.R           limma-voom: over_expressed vs down_expressed, BH-adjusted p-values, volcano plot, DEG table
+```
 
-install.packages("renv")
-renv::restore()
-3. Download data
-fasterq-dump SRR25245096
+The two notes `SARTOOLKit.md` (data download) and `kallisto.md` (QC, trimming and quantification) explain each step and its parameters. `kallisto.md` also explains how to read the FastQC warnings on this dataset (per-base sequence content and duplication levels), which are normal for RNA-seq.
 
-(Repeat for all samples)
+## Statistical design
 
-4. Run pipeline
+- Lowly expressed genes are removed with `edgeR::filterByExpr` using the group labels, and libraries are TMM-normalized.
+- `voom` turns counts into log2 CPM with precision weights, and `limma` fits a no-intercept model `~0 + group`.
+- The contrast is `over_expressed - down_expressed`. Genes are called differentially expressed at BH-adjusted p < 0.01 and |log2 fold change| ≥ 2.
 
-Execute scripts in order:
+## How to run
 
-scripts/01_qc_fastqc.sh
-scripts/02_trim.sh
-scripts/03_kallisto.sh
-scripts/04_tximport.R
-scripts/05_edgeR_DE.R
-scripts/06_limma_voom.R
-scripts/07_GSEA.R
+Requirements: [SRA Toolkit](https://github.com/ncbi/sra-tools/wiki/Downloads), FastQC, kallisto, MultiQC, and R with `tidyverse`, `tximport`, `ensembldb`, `EnsDb.Hsapiens.v86`, `edgeR`, `limma`, `cowplot`, `gt`, `DT` and `plotly`.
+
+1. Download the reads:
+   ```bash
+   bash download_sra.sh
+   ```
+2. Download the Ensembl human cDNA reference `Homo_sapiens.GRCh38.cdna.all.fa.gz` from [Ensembl](https://useast.ensembl.org/info/data/ftp/index.html). Put it in the same folder as the FASTQ files and `readMapping.sh`, then run:
+   ```bash
+   bash readMapping.sh
+   ```
+   This writes one kallisto folder per sample (`SAM01/` … `shRNA06/`) and a MultiQC report.
+3. In R, from the folder that holds the kallisto outputs and `studydesign.txt`, run the scripts in order in one session. Each script uses objects made by the one before it.
+   ```r
+   source("ReadKallistoCounts1.R")
+   source("FilterAndNormalization2.R")
+   source("DE-limma-voom3.R")
+   ```
+
+## Next steps
+
+- Gene set enrichment (GSEA on MSigDB Hallmark and KEGG gene sets) of the limma ranking
+- An edgeR quasi-likelihood test to cross-check the limma-voom results
+- A single wrapper script and saved figures and tables in a `results/` folder
+
+## License
+
+Apache 2.0

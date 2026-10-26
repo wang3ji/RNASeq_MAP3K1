@@ -45,7 +45,7 @@ vplot <- ggplot(myTopHits.df) +
   #annotate("rect", xmin = 1, xmax = 12, ymin = -log10(0.01), ymax = 7.5, alpha=.2, fill="#BE684D") +
   #annotate("rect", xmin = -1, xmax = -12, ymin = -log10(0.01), ymax = 7.5, alpha=.2, fill="#2C467A") +
   labs(title="Volcano plot",
-       subtitle = "Cutaneous leishmaniasis",
+       subtitle = "MAP3K1 overexpression vs knockdown",
        caption=paste0("produced on ", Sys.time())) +
   theme_bw()
 
@@ -64,7 +64,7 @@ diffGenes.df <- myTopHits %>%
 
 datatable(diffGenes.df,
           extensions = c('KeyTable', "FixedHeader"),
-          caption = 'Table 1: DEGs in cutaneous leishmaniasis',
+          caption = 'Table 1: DEGs, MAP3K1 overexpression vs knockdown',
           options = list(keys = TRUE, searchHighlight = TRUE, pageLength = 10, lengthMenu = c("10", "25", "50", "100"))) %>%
   formatRound(columns=c(2:11), digits=2)
 

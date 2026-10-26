@@ -3,7 +3,7 @@ library(edgeR)
 library(cowplot)
 
 sampleLabels <- targets$sample
-myDGEList <- DGEList(Txi_gene$counts)
+myDGEList <- DGEList(txi_gene$counts)
 log2.cpm <- cpm(myDGEList, log=TRUE)
 
 log2.cpm.df <- as_tibble(log2.cpm, rownames = "geneID")

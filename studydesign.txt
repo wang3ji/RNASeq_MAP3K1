@@ -1,0 +1,7 @@
+sample	SRR	group
+SAM01	SRR25245096	over_expressed
+SAM02	SRR25245097	over_expressed
+SAM03	SRR25245098	over_expressed
+shRNA04	SRR25245099	down_expressed
+shRNA05	SRR25245100	down_expressed
+shRNA06	SRR25245101	down_expressed

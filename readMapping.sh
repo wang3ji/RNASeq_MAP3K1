@@ -15,15 +15,15 @@ kallisto index -i Homo_sapiens.GRCh38.cdna.all.index Homo_sapiens.GRCh38.cdna.al
 # now map reads to the indexed reference host transcriptome
 # use as many 'threads' as your machine will allow in order to speed up the read mapping process.
 # note that we're also including the '&>' at the end of each line
-# this takes the information that would've been printed to our terminal, and outputs this in a log file that is saved in /data/course_data
+# this takes the information that would've been printed to our terminal, and outputs this in a log file next to the results
 
-# first the healthy subjects (HS)
+# MAP3K1 overexpression (CRISPR SAM activation)
 kallisto quant -i Homo_sapiens.GRCh38.cdna.all.index -o SAM01 -t 8 --single -l 200 -s 20 SRR25245096.fastq &> SAM01.log
 kallisto quant -i Homo_sapiens.GRCh38.cdna.all.index -o SAM02 -t 8 --single -l 200 -s 20 SRR25245097.fastq &> SAM02.log
 kallisto quant -i Homo_sapiens.GRCh38.cdna.all.index -o SAM03 -t 8 --single -l 200 -s 20 SRR25245098.fastq &> SAM03.log
 
-# then the cutaneous leishmaniasis (CL) patients
-kallisto quant -i Homo_sapiens.GRCh38.cdna.all.index -o shRNA08 -t 8 --single -l 200 -s 20 SRR25245099.fastq &> shRNA04.log
+# MAP3K1 knockdown (shRNA)
+kallisto quant -i Homo_sapiens.GRCh38.cdna.all.index -o shRNA04 -t 8 --single -l 200 -s 20 SRR25245099.fastq &> shRNA04.log
 kallisto quant -i Homo_sapiens.GRCh38.cdna.all.index -o shRNA05 -t 8 --single -l 200 -s 20 SRR25245100.fastq &> shRNA05.log
 kallisto quant -i Homo_sapiens.GRCh38.cdna.all.index -o shRNA06 -t 8 --single -l 200 -s 20 SRR25245101.fastq &> shRNA06.log
 
